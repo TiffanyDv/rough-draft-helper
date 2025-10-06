@@ -1,0 +1,88 @@
+{
+  "name": "Submission",
+  "type": "object",
+  "properties": {
+    "rubric_id": {
+      "type": "string",
+      "description": "ID of the rubric used"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Name of the student"
+    },
+    "paragraph": {
+      "type": "string",
+      "description": "The submitted paragraph"
+    },
+    "evaluation": {
+      "type": "object",
+      "description": "Evaluation results",
+      "properties": {
+        "total_score": {
+          "type": "number"
+        },
+        "max_score": {
+          "type": "number"
+        },
+        "criteria_scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "criterion_name": {
+                "type": "string"
+              },
+              "points_earned": {
+                "type": "number"
+              },
+              "points_possible": {
+                "type": "number"
+              },
+              "feedback": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "revision_number": {
+      "type": "number",
+      "description": "Which revision this is",
+      "default": 1
+    }
+  },
+  "required": [
+    "rubric_id",
+    "paragraph",
+    "evaluation"
+  ],
+  "rls": {
+    "write": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

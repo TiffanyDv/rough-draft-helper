@@ -1,0 +1,95 @@
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { User, FileText, Award, TrendingUp } from "lucide-react";
+import { motion } from "framer-motion";
+
+export default function SubmissionsList({ 
+  submissions, 
+  rubrics, 
+  selectedSubmission, 
+  onSelect,
+  getStudentSubmissions 
+}) {
+  return (
+    <div className="space-y-4">
+      {submissions.map((submission) => {
+        const rubric = rubrics.find(r => r.id === submission.rubric_id);
+        const percentage = (submission.evaluation?.total_score / submission.evaluation?.max_score) * 100;
+        const studentSubmissions = getStudentSubmissions(submission.student_name);
+        const hasMultipleRevisions = studentSubmissions.length > 1;
+        const isLatestRevision = submission.revision_number === Math.max(...studentSubmissions.map(s => s.revision_number));
+        
+        return (
+          <motion.div
+            key={submission.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card 
+              className={`cursor-pointer transition-all duration-200 hover:shadow-xl ${
+                selectedSubmission?.id === submission.id 
+                  ? 'ring-2 ring-orange-500 shadow-xl' 
+                  : 'hover:ring-2 hover:ring-orange-200'
+              }`}
+              onClick={() => onSelect(submission)}
+            >
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{submission.student_name}</h3>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(submission.created_date), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {submission.evaluation?.total_score}/{submission.evaluation?.max_score}
+                    </div>
+                    <div className="text-sm text-gray-500">{percentage.toFixed(0)}%</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-600">{rubric?.title || 'Unknown Rubric'}</span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {hasMultipleRevisions && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      Revision {submission.revision_number}
+                      {isLatestRevision && " (Latest)"}
+                    </Badge>
+                  )}
+                  {percentage === 100 && (
+                    <Badge className="bg-green-600">
+                      <Award className="w-3 h-3 mr-1" />
+                      Perfect Score
+                    </Badge>
+                  )}
+                  {percentage < 60 && (
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      Needs Improvement
+                    </Badge>
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-600 mt-3 line-clamp-2">
+                  {submission.paragraph}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}

@@ -1,0 +1,63 @@
+{
+  "name": "Rubric",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Name of the rubric"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this rubric evaluates"
+    },
+    "criteria": {
+      "type": "array",
+      "description": "Evaluation criteria",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Criterion name"
+          },
+          "description": {
+            "type": "string",
+            "description": "What to look for"
+          },
+          "points": {
+            "type": "number",
+            "description": "Maximum points for this criterion"
+          }
+        }
+      }
+    },
+    "total_points": {
+      "type": "number",
+      "description": "Total possible points"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this rubric is currently in use"
+    }
+  },
+  "required": [
+    "title",
+    "criteria",
+    "total_points"
+  ],
+  "rls": {
+    "write": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

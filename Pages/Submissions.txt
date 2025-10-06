@@ -1,0 +1,221 @@
+import React, { useState, useEffect } from "react";
+import { Submission } from "@/entities/Submission";
+import { Rubric } from "@/entities/Rubric";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, Search, Filter, TrendingUp } from "lucide-react";
+import { format } from "date-fns";
+
+import SubmissionsList from "../components/submissions/SubmissionsList";
+import SubmissionDetail from "../components/submissions/SubmissionDetail";
+import ClassStats from "../components/submissions/ClassStats";
+
+export default function Submissions() {
+  const [submissions, setSubmissions] = useState([]);
+  const [rubrics, setRubrics] = useState([]);
+  const [filteredSubmissions, setFilteredSubmissions] = useState([]);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRubricFilter, setSelectedRubricFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("-created_date");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [submissions, searchQuery, selectedRubricFilter, sortBy]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    const [submissionsData, rubricsData] = await Promise.all([
+      Submission.list("-created_date"),
+      Rubric.list()
+    ]);
+    setSubmissions(submissionsData);
+    setRubrics(rubricsData);
+    setIsLoading(false);
+  };
+
+  const applyFilters = () => {
+    let filtered = [...submissions];
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(sub => 
+        sub.student_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Rubric filter
+    if (selectedRubricFilter !== "all") {
+      filtered = filtered.filter(sub => sub.rubric_id === selectedRubricFilter);
+    }
+
+    // Sort
+    if (sortBy === "-created_date") {
+      filtered.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    } else if (sortBy === "created_date") {
+      filtered.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+    } else if (sortBy === "-score") {
+      filtered.sort((a, b) => (b.evaluation?.total_score || 0) - (a.evaluation?.total_score || 0));
+    } else if (sortBy === "score") {
+      filtered.sort((a, b) => (a.evaluation?.total_score || 0) - (b.evaluation?.total_score || 0));
+    } else if (sortBy === "student_name") {
+      filtered.sort((a, b) => (a.student_name || "").localeCompare(b.student_name || ""));
+    }
+
+    setFilteredSubmissions(filtered);
+  };
+
+  const exportToCSV = () => {
+    const csvData = filteredSubmissions.map(sub => {
+      const rubric = rubrics.find(r => r.id === sub.rubric_id);
+      return {
+        'Student Name': sub.student_name,
+        'Rubric': rubric?.title || 'Unknown',
+        'Score': `${sub.evaluation?.total_score || 0}/${sub.evaluation?.max_score || 0}`,
+        'Percentage': `${((sub.evaluation?.total_score / sub.evaluation?.max_score) * 100).toFixed(1)}%`,
+        'Revision': sub.revision_number,
+        'Date': format(new Date(sub.created_date), 'yyyy-MM-dd HH:mm'),
+        'Paragraph': sub.paragraph
+      };
+    });
+
+    const headers = Object.keys(csvData[0]);
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => `"${row[header]}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `submissions_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Group submissions by student
+  const getStudentSubmissions = (studentName) => {
+    return submissions
+      .filter(sub => sub.student_name === studentName)
+      .sort((a, b) => a.revision_number - b.revision_number);
+  };
+
+  return (
+    <div className="min-h-screen p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Student Submissions</h1>
+            <p className="text-gray-600 mt-2">Review and track student writing progress</p>
+          </div>
+          <Button 
+            onClick={exportToCSV}
+            disabled={filteredSubmissions.length === 0}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            Export to CSV
+          </Button>
+        </div>
+
+        {/* Class Statistics */}
+        <ClassStats submissions={submissions} rubrics={rubrics} />
+
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="w-5 h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-900">Filters</h3>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search by student name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedRubricFilter} onValueChange={setSelectedRubricFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Rubrics" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Rubrics</SelectItem>
+                {rubrics.map(rubric => (
+                  <SelectItem key={rubric.id} value={rubric.id}>
+                    {rubric.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="-created_date">Newest First</SelectItem>
+                <SelectItem value="created_date">Oldest First</SelectItem>
+                <SelectItem value="-score">Highest Score</SelectItem>
+                <SelectItem value="score">Lowest Score</SelectItem>
+                <SelectItem value="student_name">Student Name (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-48 bg-white rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : filteredSubmissions.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl shadow-lg">
+            <div className="w-24 h-24 mx-auto mb-6 bg-orange-100 rounded-full flex items-center justify-center">
+              <TrendingUp className="w-12 h-12 text-orange-600" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-2">No submissions yet</h3>
+            <p className="text-gray-600">Student submissions will appear here once they start submitting</p>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div>
+              <SubmissionsList
+                submissions={filteredSubmissions}
+                rubrics={rubrics}
+                selectedSubmission={selectedSubmission}
+                onSelect={setSelectedSubmission}
+                getStudentSubmissions={getStudentSubmissions}
+              />
+            </div>
+            <div className="sticky top-6">
+              {selectedSubmission ? (
+                <SubmissionDetail
+                  submission={selectedSubmission}
+                  rubric={rubrics.find(r => r.id === selectedSubmission.rubric_id)}
+                  allStudentSubmissions={getStudentSubmissions(selectedSubmission.student_name)}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                  <p className="text-gray-500">Select a submission to view details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

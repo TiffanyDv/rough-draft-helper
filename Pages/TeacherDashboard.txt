@@ -1,0 +1,130 @@
+import React, { useState, useEffect } from "react";
+import { Rubric } from "@/entities/Rubric";
+import { Button } from "@/components/ui/button";
+import { Plus, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+import RubricCard from "../components/teacher/RubricCard";
+import RubricForm from "../components/teacher/RubricForm";
+
+export default function TeacherDashboard() {
+  const [rubrics, setRubrics] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRubric, setEditingRubric] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadRubrics();
+  }, []);
+
+  const loadRubrics = async () => {
+    setIsLoading(true);
+    const data = await Rubric.list("-created_date");
+    setRubrics(data);
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async (rubricData) => {
+    if (editingRubric) {
+      await Rubric.update(editingRubric.id, rubricData);
+    } else {
+      await Rubric.create(rubricData);
+    }
+    setShowForm(false);
+    setEditingRubric(null);
+    loadRubrics();
+  };
+
+  const handleEdit = (rubric) => {
+    setEditingRubric(rubric);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (rubricId) => {
+    if (window.confirm("Are you sure you want to delete this rubric?")) {
+      await Rubric.delete(rubricId);
+      loadRubrics();
+    }
+  };
+
+  const toggleActive = async (rubric) => {
+    await Rubric.update(rubric.id, { ...rubric, is_active: !rubric.is_active });
+    loadRubrics();
+  };
+
+  return (
+    <div className="min-h-screen p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Teacher Dashboard</h1>
+            <p className="text-gray-600 mt-2">Create and manage writing rubrics</p>
+          </div>
+          <Button 
+            onClick={() => {
+              setEditingRubric(null);
+              setShowForm(!showForm);
+            }}
+            className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create New Rubric
+          </Button>
+        </div>
+
+        <AnimatePresence>
+          {showForm && (
+            <RubricForm
+              rubric={editingRubric}
+              onSubmit={handleSubmit}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingRubric(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-64 bg-white rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : rubrics.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-16"
+          >
+            <div className="w-24 h-24 mx-auto mb-6 bg-orange-100 rounded-full flex items-center justify-center">
+              <Plus className="w-12 h-12 text-orange-600" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-2">No rubrics yet</h3>
+            <p className="text-gray-600 mb-6">Create your first rubric to get started</p>
+            <Button 
+              onClick={() => setShowForm(true)}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Create Rubric
+            </Button>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence>
+              {rubrics.map((rubric) => (
+                <RubricCard
+                  key={rubric.id}
+                  rubric={rubric}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onToggleActive={toggleActive}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

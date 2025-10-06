@@ -1,0 +1,175 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Plus, X, Save } from "lucide-react";
+
+export default function RubricForm({ rubric, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState(rubric || {
+    title: "",
+    description: "",
+    criteria: [{ name: "", description: "", points: 0 }],
+    total_points: 0,
+    is_active: true
+  });
+
+  const addCriterion = () => {
+    setFormData({
+      ...formData,
+      criteria: [...formData.criteria, { name: "", description: "", points: 0 }]
+    });
+  };
+
+  const removeCriterion = (index) => {
+    const newCriteria = formData.criteria.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      criteria: newCriteria
+    });
+    calculateTotalPoints(newCriteria);
+  };
+
+  const updateCriterion = (index, field, value) => {
+    const newCriteria = [...formData.criteria];
+    newCriteria[index] = {
+      ...newCriteria[index],
+      [field]: field === 'points' ? parseFloat(value) || 0 : value
+    };
+    setFormData({
+      ...formData,
+      criteria: newCriteria
+    });
+    if (field === 'points') {
+      calculateTotalPoints(newCriteria);
+    }
+  };
+
+  const calculateTotalPoints = (criteria) => {
+    const total = criteria.reduce((sum, c) => sum + (c.points || 0), 0);
+    setFormData(prev => ({ ...prev, total_points: total }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="mb-8"
+    >
+      <Card className="shadow-xl border-0 bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+          <CardTitle>
+            {rubric ? "Edit Rubric" : "Create New Rubric"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <Label htmlFor="title">Rubric Title *</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g., Persuasive Paragraph Rubric"
+                required
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="What will this rubric evaluate?"
+                className="mt-2"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <Label>Evaluation Criteria *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addCriterion}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Criterion
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.criteria.map((criterion, index) => (
+                  <div key={index} className="p-4 border-2 border-gray-200 rounded-xl bg-gray-50">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="text-sm font-medium text-gray-600">Criterion {index + 1}</span>
+                      {formData.criteria.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeCriterion(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <Input
+                        value={criterion.name}
+                        onChange={(e) => updateCriterion(index, 'name', e.target.value)}
+                        placeholder="Criterion name (e.g., Thesis Statement)"
+                        required
+                      />
+                      <Textarea
+                        value={criterion.description}
+                        onChange={(e) => updateCriterion(index, 'description', e.target.value)}
+                        placeholder="What should students demonstrate?"
+                        required
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={criterion.points}
+                        onChange={(e) => updateCriterion(index, 'points', e.target.value)}
+                        placeholder="Points"
+                        required
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center p-4 bg-orange-50 rounded-xl">
+              <span className="font-medium text-gray-700">Total Points</span>
+              <span className="text-2xl font-bold text-orange-600">{formData.total_points}</span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+                <Save className="w-4 h-4 mr-2" />
+                {rubric ? "Update Rubric" : "Create Rubric"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}

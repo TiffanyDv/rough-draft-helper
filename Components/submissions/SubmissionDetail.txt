@@ -1,0 +1,166 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { User, Calendar, FileText, Award, TrendingUp, CheckCircle } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
+export default function SubmissionDetail({ submission, rubric, allStudentSubmissions }) {
+  const percentage = (submission.evaluation?.total_score / submission.evaluation?.max_score) * 100;
+  const isPerfect = percentage === 100;
+
+  const chartData = allStudentSubmissions.map(sub => ({
+    revision: `Rev ${sub.revision_number}`,
+    score: sub.evaluation?.total_score || 0,
+    percentage: ((sub.evaluation?.total_score / sub.evaluation?.max_score) * 100).toFixed(0)
+  }));
+
+  const improvement = allStudentSubmissions.length > 1
+    ? allStudentSubmissions[allStudentSubmissions.length - 1].evaluation?.total_score - allStudentSubmissions[0].evaluation?.total_score
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-lg border-0 bg-white rounded-2xl overflow-hidden">
+        <CardHeader className={`${isPerfect ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gradient-to-r from-orange-500 to-orange-600'} text-white`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-2xl mb-2">{submission.student_name}</CardTitle>
+              <div className="flex items-center gap-2 text-sm opacity-90">
+                <Calendar className="w-4 h-4" />
+                {format(new Date(submission.created_date), "MMMM d, yyyy 'at' h:mm a")}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-bold">{submission.evaluation?.total_score}/{submission.evaluation?.max_score}</div>
+              <div className="text-lg opacity-90">{percentage.toFixed(0)}%</div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-600" />
+            <span className="font-semibold text-gray-900">{rubric?.title || 'Unknown Rubric'}</span>
+            {allStudentSubmissions.length > 1 && (
+              <Badge variant="outline" className="ml-auto">
+                Revision {submission.revision_number} of {allStudentSubmissions.length}
+              </Badge>
+            )}
+          </div>
+
+          {isPerfect && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-green-900">Perfect Score Achieved!</p>
+                <p className="text-sm text-green-700 mt-1">This student earned all available points.</p>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-3">Student's Paragraph</h4>
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{submission.paragraph}</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-3">Evaluation Breakdown</h4>
+            <div className="space-y-3">
+              {submission.evaluation?.criteria_scores?.map((criterion, index) => {
+                const isFullPoints = criterion.points_earned === criterion.points_possible;
+                return (
+                  <div key={index} className={`p-4 rounded-lg border-2 ${isFullPoints ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900">{criterion.criterion_name}</span>
+                        {isFullPoints && <CheckCircle className="w-4 h-4 text-green-600" />}
+                      </div>
+                      <Badge className={isFullPoints ? "bg-green-600" : "bg-orange-600"}>
+                        {criterion.points_earned}/{criterion.points_possible}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-700">{criterion.feedback}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {allStudentSubmissions.length > 1 && (
+        <Card className="shadow-lg border-0 bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-br from-purple-50 to-purple-100 border-b border-purple-200">
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+              Student Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Total Revisions</p>
+                <p className="text-3xl font-bold text-blue-600">{allStudentSubmissions.length}</p>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Improvement</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {improvement > 0 ? '+' : ''}{improvement}pts
+                </p>
+              </div>
+            </div>
+
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="revision" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="score" 
+                    stroke="#f97316" 
+                    strokeWidth={3}
+                    dot={{ fill: '#f97316', r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <h4 className="font-semibold text-gray-900 mb-3">Revision History</h4>
+              {allStudentSubmissions.map((sub, index) => (
+                <div key={sub.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <span className="font-medium text-gray-900">Revision {sub.revision_number}</span>
+                    <span className="text-sm text-gray-500 ml-2">
+                      {format(new Date(sub.created_date), "MMM d, h:mm a")}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold text-orange-600">
+                      {sub.evaluation?.total_score}/{sub.evaluation?.max_score}
+                    </span>
+                    {index > 0 && (
+                      <span className={`text-sm ml-2 ${
+                        sub.evaluation?.total_score > allStudentSubmissions[index - 1].evaluation?.total_score 
+                          ? 'text-green-600' 
+                          : 'text-gray-500'
+                      }`}>
+                        {sub.evaluation?.total_score > allStudentSubmissions[index - 1].evaluation?.total_score && '+'}
+                        {sub.evaluation?.total_score - allStudentSubmissions[index - 1].evaluation?.total_score}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

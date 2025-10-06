@@ -1,0 +1,68 @@
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, FileText, Award, TrendingUp } from "lucide-react";
+
+export default function ClassStats({ submissions, rubrics }) {
+  const uniqueStudents = [...new Set(submissions.map(s => s.student_name))].length;
+  const totalSubmissions = submissions.length;
+  const averageScore = submissions.length > 0
+    ? submissions.reduce((sum, s) => sum + (s.evaluation?.total_score / s.evaluation?.max_score * 100), 0) / submissions.length
+    : 0;
+  const perfectScores = submissions.filter(s => 
+    s.evaluation?.total_score === s.evaluation?.max_score
+  ).length;
+
+  const stats = [
+    {
+      title: "Total Students",
+      value: uniqueStudents,
+      icon: Users,
+      color: "blue"
+    },
+    {
+      title: "Total Submissions",
+      value: totalSubmissions,
+      icon: FileText,
+      color: "purple"
+    },
+    {
+      title: "Average Score",
+      value: `${averageScore.toFixed(1)}%`,
+      icon: TrendingUp,
+      color: "orange"
+    },
+    {
+      title: "Perfect Scores",
+      value: perfectScores,
+      icon: Award,
+      color: "green"
+    }
+  ];
+
+  const colorClasses = {
+    blue: "bg-blue-500",
+    purple: "bg-purple-500",
+    orange: "bg-orange-500",
+    green: "bg-green-500"
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {stats.map((stat, index) => (
+        <Card key={index} className="shadow-lg border-0 bg-white rounded-2xl overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">{stat.title}</p>
+                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+              </div>
+              <div className={`p-3 rounded-xl ${colorClasses[stat.color]} bg-opacity-20`}>
+                <stat.icon className={`w-6 h-6 ${colorClasses[stat.color].replace('bg-', 'text-')}`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
